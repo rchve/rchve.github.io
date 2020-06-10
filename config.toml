@@ -1,0 +1,25 @@
+baseURL = "https://rchve.github.io/"
+languageCode = "en-gb"
+title = "rchve"
+theme = "anubis"
+paginate = 3
+disqusShortname = "d-rchve"
+
+[author]
+  name = "Rahul Gupta"
+
+[params]
+  author = "Rahul Gupta"
+  paginationSinglePost = true
+  dateFormat = "2006-01-02"
+
+[menu]
+  [[menu.main]]
+    identifier = "archive"
+    name = "Archive"
+    url = "/posts/"
+    weight = 0
+
+[taxonomies]
+  category = "categories"
+  tag = "tags"
