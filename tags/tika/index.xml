@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Posts on rchve</title><link>https://rchve.github.io/post/</link><description>rchve (Posts)</description><generator>Hugo -- gohugo.io</generator><language>en-gb</language><lastBuildDate>Thu, 18 Jun 2020 00:00:00 +0000</lastBuildDate><atom:link href="https://rchve.github.io/post/index.xml" rel="self" type="application/rss+xml"/><item><title>Quarkus for Spin - Part 2</title><link>https://rchve.github.io/post/quarkus-for-spin-2/</link><pubDate>Thu, 18 Jun 2020 00:00:00 +0000</pubDate><guid>https://rchve.github.io/post/quarkus-for-spin-2/</guid><description>&lt;p>In this post we will be enhancing from the &lt;a href="https://rchve.github.io/post/quarkus-for-spin-1/">Part 1&lt;/a> to add new functionality using quarkus extensions. We will add a watch command to the application that watches a folder for file events and process to identify the type of file.&lt;/p>
+<?xml version="1.0" encoding="utf-8" standalone="yes"?><rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom"><channel><title>Tika on rchve</title><link>https://rchve.github.io/tags/tika/</link><description>rchve (Tika)</description><generator>Hugo -- gohugo.io</generator><language>en-gb</language><lastBuildDate>Thu, 18 Jun 2020 00:00:00 +0000</lastBuildDate><atom:link href="https://rchve.github.io/tags/tika/index.xml" rel="self" type="application/rss+xml"/><item><title>Quarkus for Spin - Part 2</title><link>https://rchve.github.io/post/quarkus-for-spin-2/</link><pubDate>Thu, 18 Jun 2020 00:00:00 +0000</pubDate><guid>https://rchve.github.io/post/quarkus-for-spin-2/</guid><description>&lt;p>In this post we will be enhancing from the &lt;a href="https://rchve.github.io/post/quarkus-for-spin-1/">Part 1&lt;/a> to add new functionality using quarkus extensions. We will add a watch command to the application that watches a folder for file events and process to identify the type of file.&lt;/p>
 &lt;p>In order to implement the above functionality we will use the following&lt;/p>
 &lt;ul>
 &lt;li>quarkus picocli to add subcommand &amp;ldquo;watch&amp;rdquo;&lt;/li>
@@ -191,74 +191,4 @@ Content Type&lt;span style="color:#f92672">[&lt;/span>image/png&lt;span style="c
 &lt;li>&lt;a href="https://quarkus.io/guides/picocli">Quarkus Picocli&lt;/a>&lt;/li>
 &lt;li>&lt;a href="https://camel.apache.org/camel-quarkus/latest/">Quarkus Camel&lt;/a>&lt;/li>
 &lt;li>&lt;a href="https://quarkus.io/guides/tika">Quarkus Tika&lt;/a>&lt;/li>
-&lt;/ul></description></item><item><title>Quarkus for Spin - Part 1</title><link>https://rchve.github.io/post/quarkus-for-spin-1/</link><pubDate>Wed, 10 Jun 2020 00:00:00 +0000</pubDate><guid>https://rchve.github.io/post/quarkus-for-spin-1/</guid><description>&lt;p>From some time i wanted to try out &lt;a href="https://quarkus.io/">Quarkus&lt;/a>. Starting with version 1.4 it bought the functionality of command line support. It was good time to start playing with Quarkus for learning and understanding the ecosystem along with native compilation.&lt;/p>
-&lt;p>In this blog i will create a cli application using Quarkus picocli extension and natively compile to binary.&lt;/p>
-&lt;h4 id="getting-started">Getting Started&lt;/h4>
-&lt;p>A started project can be created from &lt;a href="https://code.quarkus.io/">code.quarkus.io&lt;/a> or using the command below&lt;/p>
-&lt;div class="highlight">&lt;pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-sh" data-lang="sh">mvn io.quarkus:quarkus-maven-plugin:1.5.0.Final:create &lt;span style="color:#ae81ff">\
-&lt;/span>&lt;span style="color:#ae81ff">&lt;/span> -DprojectGroupId&lt;span style="color:#f92672">=&lt;/span>io.gh.rchve -DprojectArtifactId&lt;span style="color:#f92672">=&lt;/span>qlearn &lt;span style="color:#ae81ff">\
-&lt;/span>&lt;span style="color:#ae81ff">&lt;/span> -DprojectVersion&lt;span style="color:#f92672">=&lt;/span>1.0.0 -Dextensions&lt;span style="color:#f92672">=&lt;/span>&lt;span style="color:#e6db74">&amp;#34;picocli&amp;#34;&lt;/span> &lt;span style="color:#ae81ff">\
-&lt;/span>&lt;span style="color:#ae81ff">&lt;/span> -DclassName&lt;span style="color:#f92672">=&lt;/span>io.gh.rchve.qlearn.Main
-&lt;/code>&lt;/pre>&lt;/div>&lt;p>Delete the generated folder (src/test, src/main/docker).&lt;/p>
-&lt;p>From pom.xml remove all dependencies except quarkus-picocli.&lt;/p>
-&lt;h4 id="creating-top-level-command">Creating Top level command&lt;/h4>
-&lt;p>Create class for Top level command&lt;/p>
-&lt;div class="highlight">&lt;pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-java" data-lang="java">&lt;span style="color:#f92672">package&lt;/span> io.gh.rchve.qlearn.commands&lt;span style="color:#f92672">;&lt;/span>
-&lt;span style="color:#f92672">import&lt;/span> io.quarkus.picocli.runtime.annotations.TopCommand&lt;span style="color:#f92672">;&lt;/span>
-&lt;span style="color:#f92672">import&lt;/span> picocli.CommandLine&lt;span style="color:#f92672">;&lt;/span>
-&lt;span style="color:#a6e22e">@TopCommand&lt;/span>
-&lt;span style="color:#a6e22e">@CommandLine.Command&lt;/span>&lt;span style="color:#f92672">(&lt;/span>mixinStandardHelpOptions &lt;span style="color:#f92672">=&lt;/span> &lt;span style="color:#66d9ef">true&lt;/span>&lt;span style="color:#f92672">,&lt;/span> version &lt;span style="color:#f92672">=&lt;/span> &lt;span style="color:#e6db74">&amp;#34;1.0.0&amp;#34;&lt;/span>&lt;span style="color:#f92672">)&lt;/span>
-&lt;span style="color:#66d9ef">public&lt;/span> &lt;span style="color:#66d9ef">class&lt;/span> &lt;span style="color:#a6e22e">QLearnCommand&lt;/span> &lt;span style="color:#66d9ef">implements&lt;/span> Runnable &lt;span style="color:#f92672">{&lt;/span>
-&lt;span style="color:#a6e22e">@Override&lt;/span>
-&lt;span style="color:#66d9ef">public&lt;/span> &lt;span style="color:#66d9ef">void&lt;/span> &lt;span style="color:#a6e22e">run&lt;/span>&lt;span style="color:#f92672">()&lt;/span> &lt;span style="color:#f92672">{}&lt;/span>
-&lt;span style="color:#f92672">}&lt;/span>
-&lt;/code>&lt;/pre>&lt;/div>&lt;h4 id="build-and-run-the-command">Build and run the command&lt;/h4>
-&lt;div class="highlight">&lt;pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-sh" data-lang="sh">./mvnw clean package
-java -jar target/qlearn-1.0.0-runner.jar -h
-__ ____ __ _____ ___ __ ____ ______
---/ __ &lt;span style="color:#ae81ff">\/&lt;/span> / / / _ | / _ &lt;span style="color:#ae81ff">\/&lt;/span> //_/ / / / __/
--/ /_/ / /_/ / __ |/ , _/ ,&amp;lt; / /_/ /&lt;span style="color:#ae81ff">\ \ &lt;/span>
---&lt;span style="color:#ae81ff">\_&lt;/span>__&lt;span style="color:#ae81ff">\_\_&lt;/span>___/_/ |_/_/|_/_/|_|&lt;span style="color:#ae81ff">\_&lt;/span>___/___/
-2020-06-10 18:45:17,141 INFO &lt;span style="color:#f92672">[&lt;/span>io.quarkus&lt;span style="color:#f92672">]&lt;/span> &lt;span style="color:#f92672">(&lt;/span>main&lt;span style="color:#f92672">)&lt;/span> qlearn 1.0.0 on JVM &lt;span style="color:#f92672">(&lt;/span>powered by Quarkus 1.5.0.Final&lt;span style="color:#f92672">)&lt;/span> started in 0.333s.
-2020-06-10 18:45:17,162 INFO &lt;span style="color:#f92672">[&lt;/span>io.quarkus&lt;span style="color:#f92672">]&lt;/span> &lt;span style="color:#f92672">(&lt;/span>main&lt;span style="color:#f92672">)&lt;/span> Profile prod activated.
-2020-06-10 18:45:17,162 INFO &lt;span style="color:#f92672">[&lt;/span>io.quarkus&lt;span style="color:#f92672">]&lt;/span> &lt;span style="color:#f92672">(&lt;/span>main&lt;span style="color:#f92672">)&lt;/span> Installed features: &lt;span style="color:#f92672">[&lt;/span>cdi, picocli&lt;span style="color:#f92672">]&lt;/span>
-Usage: &amp;lt;main class&amp;gt; &lt;span style="color:#f92672">[&lt;/span>-hV&lt;span style="color:#f92672">]&lt;/span>
--h, --help Show this help message and exit.
--V, --version Print version information and exit.
-2020-06-10 18:45:17,275 INFO &lt;span style="color:#f92672">[&lt;/span>io.quarkus&lt;span style="color:#f92672">]&lt;/span> &lt;span style="color:#f92672">(&lt;/span>main&lt;span style="color:#f92672">)&lt;/span> qlearn stopped in 0.004s
-&lt;/code>&lt;/pre>&lt;/div>&lt;p>The above run displays the Quarkus banner and info logs. To disable this add the following properties to application.properties&lt;/p>
-&lt;pre>&lt;code class="language-properties" data-lang="properties">quarkus.banner.enabled=false
-quarkus.log.level=ERROR
-&lt;/code>&lt;/pre>&lt;p>Now build and run again.&lt;/p>
-&lt;div class="highlight">&lt;pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-sh" data-lang="sh">./mvnw clean package
-java -jar target/qlearn-1.0.0-runner.jar -h
-Usage: &amp;lt;main class&amp;gt; &lt;span style="color:#f92672">[&lt;/span>-hV&lt;span style="color:#f92672">]&lt;/span>
--h, --help Show this help message and exit.
--V, --version Print version information and exit.
-&lt;/code>&lt;/pre>&lt;/div>&lt;p>Output is similar to a cli application.&lt;/p>
-&lt;h4 id="build-and-run-the-native">Build and run the native&lt;/h4>
-&lt;p>Building a native image uses the &lt;a href="https://www.graalvm.org/">GraalVM&lt;/a> to convert the java application to native binary.&lt;/p>
-&lt;p>Running the below command to create a binary of Quarkus Application.&lt;/p>
-&lt;div class="highlight">&lt;pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-sh" data-lang="sh">./mvnw clean package -Pnative
-./target/qlearn-1.0.0-runner -h
-Usage: &amp;lt;main class&amp;gt; &lt;span style="color:#f92672">[&lt;/span>-hV&lt;span style="color:#f92672">]&lt;/span>
--h, --help Show this help message and exit.
--V, --version Print version information and exit.
-&lt;/code>&lt;/pre>&lt;/div>&lt;h4 id="running-the-application-from-ide">Running the application from IDE&lt;/h4>
-&lt;p>The Quarkus application generates the Main class that will be used when running the application. We can provide our own Main class to be able to run from IDE.&lt;/p>
-&lt;p>All the below Main class&lt;/p>
-&lt;div class="highlight">&lt;pre style="color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4">&lt;code class="language-java" data-lang="java">&lt;span style="color:#f92672">package&lt;/span> io.gh.rchve.qlearn&lt;span style="color:#f92672">;&lt;/span>
-&lt;span style="color:#f92672">import&lt;/span> io.quarkus.runtime.Quarkus&lt;span style="color:#f92672">;&lt;/span>
-&lt;span style="color:#66d9ef">public&lt;/span> &lt;span style="color:#66d9ef">class&lt;/span> &lt;span style="color:#a6e22e">QLearn&lt;/span> &lt;span style="color:#f92672">{&lt;/span>
-&lt;span style="color:#66d9ef">public&lt;/span> &lt;span style="color:#66d9ef">static&lt;/span> &lt;span style="color:#66d9ef">void&lt;/span> &lt;span style="color:#a6e22e">main&lt;/span>&lt;span style="color:#f92672">(&lt;/span>String&lt;span style="color:#f92672">[]&lt;/span> args&lt;span style="color:#f92672">)&lt;/span> &lt;span style="color:#f92672">{&lt;/span>
-Quarkus&lt;span style="color:#f92672">.&lt;/span>&lt;span style="color:#a6e22e">run&lt;/span>&lt;span style="color:#f92672">(&lt;/span>args&lt;span style="color:#f92672">);&lt;/span>
-&lt;span style="color:#f92672">}&lt;/span>
-&lt;span style="color:#f92672">}&lt;/span>
-&lt;/code>&lt;/pre>&lt;/div>&lt;p>Now we can run the application from the IDE.&lt;/p>
-&lt;p>The code for this step is available at &lt;a href="https://github.com/rchve/qlearn/tree/step-01">https://github.com/rchve/qlearn/tree/step-01&lt;/a>&lt;/p>
-&lt;h4 id="next-steps">Next Steps&lt;/h4>
-&lt;p>Add sub commands to the application.&lt;/p>
-&lt;h5 id="references">References&lt;/h5>
-&lt;ul>
-&lt;li>&lt;a href="https://quarkus.io/guides/picocli">Quarkus Picocli&lt;/a>&lt;/li>
-&lt;/ul></description></item><item><title>Hello</title><link>https://rchve.github.io/post/hello-world/</link><pubDate>Tue, 09 Jun 2020 00:00:00 +0000</pubDate><guid>https://rchve.github.io/post/hello-world/</guid><description>&lt;p>This is place for me to hold notes, facts, etc for remembering and sharing.&lt;/p></description></item></channel></rss>
+&lt;/ul></description></item></channel></rss>

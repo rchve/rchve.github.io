@@ -1,0 +1,184 @@
+<!doctype html><html lang=en-gb><head><meta charset=utf-8><meta name=HandheldFriendly content="True"><meta name=viewport content="width=device-width,initial-scale=1"><meta name=referrer content="no-referrer-when-downgrade"><title>Quarkus for Spin - Part 2 - rchve</title><meta name=description content><link rel=icon type=image/x-icon href=https://rchve.github.io/favicon.ico><link rel=apple-touch-icon-precomposed href=https://rchve.github.io/favicon.png><link rel=stylesheet href="https://rchve.github.io/css/style.css?rnd=1592760762"><meta property="og:title" content="Quarkus for Spin - Part 2"><meta property="og:description" content="In this post we will be enhancing from the Part 1 to add new functionality using quarkus extensions. We will add a watch command to the application that watches a folder for file events and process to identify the type of file.
+In order to implement the above functionality we will use the following
+ quarkus picocli to add subcommand &ldquo;watch&rdquo; quarkus camel integration to watch for file events and react on them quarkus tika to process a file and determine its mine type  We will be starting from the code at branch step-01"><meta property="og:type" content="article"><meta property="og:url" content="https://rchve.github.io/post/quarkus-for-spin-2/"><meta property="article:published_time" content="2020-06-18T00:00:00+00:00"><meta property="article:modified_time" content="2020-06-18T00:00:00+00:00"><meta name=twitter:card content="summary"><meta name=twitter:title content="Quarkus for Spin - Part 2"><meta name=twitter:description content="In this post we will be enhancing from the Part 1 to add new functionality using quarkus extensions. We will add a watch command to the application that watches a folder for file events and process to identify the type of file.
+In order to implement the above functionality we will use the following
+ quarkus picocli to add subcommand &ldquo;watch&rdquo; quarkus camel integration to watch for file events and react on them quarkus tika to process a file and determine its mine type  We will be starting from the code at branch step-01"></head><body><a class=skip-main href=#main>Skip to main content</a><div class=container><header><h1 class=site-header><a href=/>rchve</a></h1><nav><a href=https://rchve.github.io/posts/>Archive</a></nav></header><main id=main tabindex=-1><article class=post><header><h1 class=post-title>Quarkus for Spin - Part 2</h1></header><div class=content><p>In this post we will be enhancing from the <a href=https://rchve.github.io/post/quarkus-for-spin-1/>Part 1</a> to add new functionality using quarkus extensions. We will add a watch command to the application that watches a folder for file events and process to identify the type of file.</p><p>In order to implement the above functionality we will use the following</p><ul><li>quarkus picocli to add subcommand &ldquo;watch&rdquo;</li><li>quarkus camel integration to watch for file events and react on them</li><li>quarkus tika to process a file and determine its mine type</li></ul><p>We will be starting from the code at branch <a href=https://github.com/rchve/qlearn/tree/step-01>step-01</a></p><h4 id=adding-subcommand>Adding subcommand</h4><p>To add a new subcommand create a new Java class for command and add Picocli annoations that will be discovered when run as quarkus application</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-java data-lang=java><span style=color:#f92672>import</span> picocli.CommandLine<span style=color:#f92672>;</span>
+
+<span style=color:#a6e22e>@CommandLine.Command</span><span style=color:#f92672>(</span>
+    name <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;watch&#34;</span><span style=color:#f92672>,</span>
+    mixinStandardHelpOptions <span style=color:#f92672>=</span> <span style=color:#66d9ef>true</span><span style=color:#f92672>,</span>
+    description <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;Watches a path for file changes.&#34;</span><span style=color:#f92672>)</span>
+<span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>WatchCommand</span> <span style=color:#66d9ef>implements</span> Runnable <span style=color:#f92672>{</span>
+  <span style=color:#a6e22e>@CommandLine.Option</span><span style=color:#f92672>(</span>
+      names <span style=color:#f92672>=</span> <span style=color:#f92672>{</span><span style=color:#e6db74>&#34;-p&#34;</span><span style=color:#f92672>,</span> <span style=color:#e6db74>&#34;--path&#34;</span><span style=color:#f92672>},</span>
+      description <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;Path to watch.&#34;</span><span style=color:#f92672>,</span>
+      defaultValue <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;.&#34;</span><span style=color:#f92672>)</span>
+  String path<span style=color:#f92672>;</span>
+
+  <span style=color:#a6e22e>@Override</span>
+  <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>run</span><span style=color:#f92672>()</span> <span style=color:#f92672>{</span>
+    System<span style=color:#f92672>.</span><span style=color:#a6e22e>out</span><span style=color:#f92672>.</span><span style=color:#a6e22e>println</span><span style=color:#f92672>(</span><span style=color:#e6db74>&#34;Watch command fired ...&#34;</span><span style=color:#f92672>);</span>
+  <span style=color:#f92672>}</span>
+<span style=color:#f92672>}</span>
+</code></pre></div><p>The @CommandLine.Command annotation on the class defines the subcommand with name as &ldquo;watch&rdquo;. As the command needs to accept the path to monitor this is added and an option to the command using the @CommandLoine.Option annotation. The run function is executed whenever the command is run.</p><h5 id=building-and-running>Building and running</h5><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>./mvnw clean package
+
+java -jar target/qlearn-1.0.0-runner.jar watch           
+Watch command fired ...
+</code></pre></div><h4 id=adding-support-to-listen-to-file-events>Adding support to listen to file events</h4><p>The quarkus camel integration have <a href=https://camel.apache.org/camel-quarkus/latest/extensions/file-watch.html>file watch component</a> that can be used to monitor and perform action on file events. Guide for camel quarkus integration is available <a href=https://camel.apache.org/camel-quarkus/latest/>here</a>.</p><p>Quarkus looks for @ApplicationScoped RouteBuilder and will setup the route and start it. However for our case we want to setup camel route for the watch command only. This can be achieved by configuring the routes to the CamelContext provided by Quarkus.</p><p>Update to pom.xml to add the dependencyManagment and dependencies.</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-xml data-lang=xml>    <span style=color:#f92672>&lt;dependencyManagement&gt;</span>
+      <span style=color:#f92672>&lt;dependencies&gt;</span>
+          <span style=color:#f92672>&lt;dependency&gt;</span>
+              <span style=color:#f92672>&lt;groupId&gt;</span>org.apache.camel.quarkus<span style=color:#f92672>&lt;/groupId&gt;</span>
+              <span style=color:#f92672>&lt;artifactId&gt;</span>camel-quarkus-bom<span style=color:#f92672>&lt;/artifactId&gt;</span>
+              <span style=color:#f92672>&lt;version&gt;</span>1.0.0-CR2<span style=color:#f92672>&lt;/version&gt;</span>
+              <span style=color:#f92672>&lt;type&gt;</span>pom<span style=color:#f92672>&lt;/type&gt;</span>
+              <span style=color:#f92672>&lt;scope&gt;</span>import<span style=color:#f92672>&lt;/scope&gt;</span>
+          <span style=color:#f92672>&lt;/dependency&gt;</span>
+        <span style=color:#f92672>&lt;/dependencies&gt;</span>
+    <span style=color:#f92672>&lt;/dependencyManagement&gt;</span>
+    <span style=color:#f92672>&lt;dependencies&gt;</span>
+        <span style=color:#f92672>&lt;dependency&gt;</span>
+            <span style=color:#f92672>&lt;groupId&gt;</span>org.apache.camel.quarkus<span style=color:#f92672>&lt;/groupId&gt;</span>
+            <span style=color:#f92672>&lt;artifactId&gt;</span>camel-quarkus-file-watch<span style=color:#f92672>&lt;/artifactId&gt;</span>
+        <span style=color:#f92672>&lt;/dependency&gt;</span>
+    <span style=color:#f92672>&lt;/dependencies&gt;</span>
+</code></pre></div><p>Update the WatchCommand class to setup the camel route to monitor and listen for messages</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-java data-lang=java><span style=color:#f92672>import</span> io.quarkus.runtime.Quarkus<span style=color:#f92672>;</span>
+<span style=color:#f92672>import</span> org.apache.camel.CamelContext<span style=color:#f92672>;</span>
+<span style=color:#f92672>import</span> org.apache.camel.builder.endpoint.EndpointRouteBuilder<span style=color:#f92672>;</span>
+<span style=color:#f92672>import</span> picocli.CommandLine<span style=color:#f92672>;</span>
+
+<span style=color:#a6e22e>@CommandLine.Command</span><span style=color:#f92672>(</span>
+    name <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;watch&#34;</span><span style=color:#f92672>,</span>
+    mixinStandardHelpOptions <span style=color:#f92672>=</span> <span style=color:#66d9ef>true</span><span style=color:#f92672>,</span>
+    description <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;Watches a path for file changes.&#34;</span><span style=color:#f92672>)</span>
+<span style=color:#66d9ef>public</span> <span style=color:#66d9ef>class</span> <span style=color:#a6e22e>WatchCommand</span> <span style=color:#66d9ef>implements</span> Runnable <span style=color:#f92672>{</span>
+  <span style=color:#a6e22e>@CommandLine.Option</span><span style=color:#f92672>(</span>
+      names <span style=color:#f92672>=</span> <span style=color:#f92672>{</span><span style=color:#e6db74>&#34;-p&#34;</span><span style=color:#f92672>,</span> <span style=color:#e6db74>&#34;--path&#34;</span><span style=color:#f92672>},</span>
+      description <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;Path to watch.&#34;</span><span style=color:#f92672>,</span>
+      defaultValue <span style=color:#f92672>=</span> <span style=color:#e6db74>&#34;.&#34;</span><span style=color:#f92672>)</span>
+  String path<span style=color:#f92672>;</span>
+
+  <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>final</span> CamelContext ctx<span style=color:#f92672>;</span>
+  <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>final</span> FileProcessor processor<span style=color:#f92672>;</span>
+
+  <span style=color:#66d9ef>public</span> <span style=color:#a6e22e>WatchCommand</span><span style=color:#f92672>(</span>CamelContext ctx<span style=color:#f92672>,</span> FileProcessor processor<span style=color:#f92672>)</span> <span style=color:#f92672>{</span>
+    <span style=color:#66d9ef>this</span><span style=color:#f92672>.</span><span style=color:#a6e22e>ctx</span> <span style=color:#f92672>=</span> ctx<span style=color:#f92672>;</span>
+    <span style=color:#66d9ef>this</span><span style=color:#f92672>.</span><span style=color:#a6e22e>processor</span> <span style=color:#f92672>=</span> processor<span style=color:#f92672>;</span>
+  <span style=color:#f92672>}</span>
+
+  <span style=color:#a6e22e>@Override</span>
+  <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>run</span><span style=color:#f92672>()</span> <span style=color:#f92672>{</span>
+    <span style=color:#66d9ef>try</span> <span style=color:#f92672>{</span>
+      System<span style=color:#f92672>.</span><span style=color:#a6e22e>out</span><span style=color:#f92672>.</span><span style=color:#a6e22e>println</span><span style=color:#f92672>(</span><span style=color:#e6db74>&#34;Configuring Watches ... &#34;</span><span style=color:#f92672>);</span>
+      ctx<span style=color:#f92672>.</span><span style=color:#a6e22e>addRoutes</span><span style=color:#f92672>(</span>
+          <span style=color:#66d9ef>new</span> EndpointRouteBuilder<span style=color:#f92672>()</span> <span style=color:#f92672>{</span>
+            <span style=color:#a6e22e>@Override</span>
+            <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>configure</span><span style=color:#f92672>()</span> <span style=color:#f92672>{</span>
+              from<span style=color:#f92672>(</span>fileWatch<span style=color:#f92672>(</span>path<span style=color:#f92672>)).</span><span style=color:#a6e22e>process</span><span style=color:#f92672>(</span>processor<span style=color:#f92672>);</span>
+            <span style=color:#f92672>}</span>
+          <span style=color:#f92672>});</span>
+      System<span style=color:#f92672>.</span><span style=color:#a6e22e>out</span><span style=color:#f92672>.</span><span style=color:#a6e22e>println</span><span style=color:#f92672>(</span><span style=color:#e6db74>&#34;Waiting for file changes ... Press Ctrl+C to exit.&#34;</span><span style=color:#f92672>);</span>
+      Quarkus<span style=color:#f92672>.</span><span style=color:#a6e22e>waitForExit</span><span style=color:#f92672>();</span>
+    <span style=color:#f92672>}</span> <span style=color:#66d9ef>catch</span> <span style=color:#f92672>(</span>Exception e<span style=color:#f92672>)</span> <span style=color:#f92672>{</span>
+      System<span style=color:#f92672>.</span><span style=color:#a6e22e>err</span><span style=color:#f92672>.</span><span style=color:#a6e22e>println</span><span style=color:#f92672>(</span><span style=color:#e6db74>&#34;Unable to setup watch&#34;</span><span style=color:#f92672>);</span>
+      System<span style=color:#f92672>.</span><span style=color:#a6e22e>exit</span><span style=color:#f92672>(-</span>1<span style=color:#f92672>);</span>
+    <span style=color:#f92672>}</span>
+  <span style=color:#f92672>}</span>
+<span style=color:#f92672>}</span>
+</code></pre></div><p>The above code injects the CamelContext and FileProcessor to the watch command and the setup the camel route to monitor path and process any event using the FileProcessor.</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-java data-lang=java><span style=color:#f92672>import</span> org.apache.camel.Exchange<span style=color:#f92672>;</span>
+<span style=color:#f92672>import</span> org.apache.camel.Processor<span style=color:#f92672>;</span>
+<span style=color:#f92672>import</span> org.apache.camel.component.file.watch.FileWatchComponent<span style=color:#f92672>;</span>
+<span style=color:#f92672>import</span> org.apache.camel.component.file.watch.constants.FileEventEnum<span style=color:#f92672>;</span>
+
+<span style=color:#f92672>import</span> javax.enterprise.context.ApplicationScoped<span style=color:#f92672>;</span>
+
+<span style=color:#a6e22e>@ApplicationScoped</span>
+<span style=color:#66d9ef>class</span> <span style=color:#a6e22e>FileProcessor</span> <span style=color:#66d9ef>implements</span> Processor <span style=color:#f92672>{</span>
+  <span style=color:#a6e22e>@Override</span>
+  <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>process</span><span style=color:#f92672>(</span>Exchange exchange<span style=color:#f92672>)</span> <span style=color:#f92672>{</span>
+    System<span style=color:#f92672>.</span><span style=color:#a6e22e>out</span><span style=color:#f92672>.</span><span style=color:#a6e22e>println</span><span style=color:#f92672>(</span><span style=color:#e6db74>&#34;----------------------------------------------------&#34;</span><span style=color:#f92672>);</span>
+    <span style=color:#66d9ef>final</span> String path <span style=color:#f92672>=</span> <span style=color:#f92672>(</span>String<span style=color:#f92672>)</span> exchange<span style=color:#f92672>.</span><span style=color:#a6e22e>getMessage</span><span style=color:#f92672>().</span><span style=color:#a6e22e>getHeader</span><span style=color:#f92672>(</span>Exchange<span style=color:#f92672>.</span><span style=color:#a6e22e>FILE_PATH</span><span style=color:#f92672>);</span>
+    <span style=color:#66d9ef>final</span> FileEventEnum eventType <span style=color:#f92672>=</span>
+        <span style=color:#f92672>(</span>FileEventEnum<span style=color:#f92672>)</span> exchange<span style=color:#f92672>.</span><span style=color:#a6e22e>getMessage</span><span style=color:#f92672>().</span><span style=color:#a6e22e>getHeader</span><span style=color:#f92672>(</span>FileWatchComponent<span style=color:#f92672>.</span><span style=color:#a6e22e>EVENT_TYPE_HEADER</span><span style=color:#f92672>);</span>
+    System<span style=color:#f92672>.</span><span style=color:#a6e22e>out</span><span style=color:#f92672>.</span><span style=color:#a6e22e>println</span><span style=color:#f92672>(</span>String<span style=color:#f92672>.</span><span style=color:#a6e22e>format</span><span style=color:#f92672>(</span><span style=color:#e6db74>&#34;File %s was %s.&#34;</span><span style=color:#f92672>,</span> path<span style=color:#f92672>,</span> eventType<span style=color:#f92672>));</span>
+    System<span style=color:#f92672>.</span><span style=color:#a6e22e>out</span><span style=color:#f92672>.</span><span style=color:#a6e22e>println</span><span style=color:#f92672>(</span><span style=color:#e6db74>&#34;----------------------------------------------------\n&#34;</span><span style=color:#f92672>);</span>
+  <span style=color:#f92672>}</span>
+<span style=color:#f92672>}</span>
+</code></pre></div><p>The above file processor just logs the file and event type.</p><h5 id=building-and-running-1>Building and running</h5><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>./mvnw clean package
+
+java -jar target/qlearn-1.0.0-runner.jar watch -p <span style=color:#e6db74>&#34;./tmp&#34;</span>
+Configuring Watches ... 
+Waiting <span style=color:#66d9ef>for</span> file changes ... Press Ctrl+C to exit.
+----------------------------------------------------
+File /Users/rahgupta19/.k/gh/qlearn/tmp/abc.txt was CREATE.
+----------------------------------------------------
+</code></pre></div><p>The above command monitor the &ldquo;tmp&rdquo; directory and processes file events using the camel routes.</p><h4 id=identifying-the-file-type-using-apache-tika>Identifying the file type using Apache Tika</h4><p>Quarkus Tika integration uses Apache Tika library to analyse context of the documents. We will use the quarkus-tika extension to parse the file contents using the FileProcessor and identify the Media Type of the document.</p><p>Update the pom.xml to include the quarkus-tika dependency.</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-xml data-lang=xml>        <span style=color:#f92672>&lt;dependency&gt;</span>
+            <span style=color:#f92672>&lt;groupId&gt;</span>io.quarkus<span style=color:#f92672>&lt;/groupId&gt;</span>
+            <span style=color:#f92672>&lt;artifactId&gt;</span>quarkus-tika<span style=color:#f92672>&lt;/artifactId&gt;</span>
+        <span style=color:#f92672>&lt;/dependency&gt;</span>
+</code></pre></div><p>Update the FileProcessor to parse the files received by Apache Camel and parse files using Apache Tika.</p><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-java data-lang=java><span style=color:#f92672>import</span> io.quarkus.tika.TikaMetadata<span style=color:#f92672>;</span>
+<span style=color:#f92672>import</span> io.quarkus.tika.TikaParser<span style=color:#f92672>;</span>
+<span style=color:#f92672>import</span> org.apache.camel.Exchange<span style=color:#f92672>;</span>
+<span style=color:#f92672>import</span> org.apache.camel.Processor<span style=color:#f92672>;</span>
+<span style=color:#f92672>import</span> org.apache.camel.component.file.watch.FileWatchComponent<span style=color:#f92672>;</span>
+<span style=color:#f92672>import</span> org.apache.camel.component.file.watch.constants.FileEventEnum<span style=color:#f92672>;</span>
+<span style=color:#f92672>import</span> org.apache.tika.io.TikaInputStream<span style=color:#f92672>;</span>
+
+<span style=color:#f92672>import</span> javax.enterprise.context.ApplicationScoped<span style=color:#f92672>;</span>
+<span style=color:#f92672>import</span> java.io.File<span style=color:#f92672>;</span>
+<span style=color:#f92672>import</span> java.io.IOException<span style=color:#f92672>;</span>
+
+<span style=color:#a6e22e>@ApplicationScoped</span>
+<span style=color:#66d9ef>class</span> <span style=color:#a6e22e>FileProcessor</span> <span style=color:#66d9ef>implements</span> Processor <span style=color:#f92672>{</span>
+  <span style=color:#66d9ef>private</span> <span style=color:#66d9ef>final</span> TikaParser parser<span style=color:#f92672>;</span>
+
+  FileProcessor<span style=color:#f92672>(</span>TikaParser parser<span style=color:#f92672>)</span> <span style=color:#f92672>{</span>
+    <span style=color:#66d9ef>this</span><span style=color:#f92672>.</span><span style=color:#a6e22e>parser</span> <span style=color:#f92672>=</span> parser<span style=color:#f92672>;</span>
+  <span style=color:#f92672>}</span>
+
+  <span style=color:#a6e22e>@Override</span>
+  <span style=color:#66d9ef>public</span> <span style=color:#66d9ef>void</span> <span style=color:#a6e22e>process</span><span style=color:#f92672>(</span>Exchange exchange<span style=color:#f92672>)</span> <span style=color:#66d9ef>throws</span> IOException <span style=color:#f92672>{</span>
+    System<span style=color:#f92672>.</span><span style=color:#a6e22e>out</span><span style=color:#f92672>.</span><span style=color:#a6e22e>println</span><span style=color:#f92672>(</span><span style=color:#e6db74>&#34;----------------------------------------------------&#34;</span><span style=color:#f92672>);</span>
+    <span style=color:#66d9ef>final</span> String path <span style=color:#f92672>=</span> <span style=color:#f92672>(</span>String<span style=color:#f92672>)</span> exchange<span style=color:#f92672>.</span><span style=color:#a6e22e>getMessage</span><span style=color:#f92672>().</span><span style=color:#a6e22e>getHeader</span><span style=color:#f92672>(</span>Exchange<span style=color:#f92672>.</span><span style=color:#a6e22e>FILE_PATH</span><span style=color:#f92672>);</span>
+    <span style=color:#66d9ef>final</span> FileEventEnum eventType <span style=color:#f92672>=</span>
+        <span style=color:#f92672>(</span>FileEventEnum<span style=color:#f92672>)</span> exchange<span style=color:#f92672>.</span><span style=color:#a6e22e>getMessage</span><span style=color:#f92672>().</span><span style=color:#a6e22e>getHeader</span><span style=color:#f92672>(</span>FileWatchComponent<span style=color:#f92672>.</span><span style=color:#a6e22e>EVENT_TYPE_HEADER</span><span style=color:#f92672>);</span>
+    System<span style=color:#f92672>.</span><span style=color:#a6e22e>out</span><span style=color:#f92672>.</span><span style=color:#a6e22e>println</span><span style=color:#f92672>(</span>String<span style=color:#f92672>.</span><span style=color:#a6e22e>format</span><span style=color:#f92672>(</span><span style=color:#e6db74>&#34;File %s was %s.&#34;</span><span style=color:#f92672>,</span> path<span style=color:#f92672>,</span> eventType<span style=color:#f92672>));</span>
+    <span style=color:#66d9ef>final</span> TikaMetadata metadata <span style=color:#f92672>=</span> parser<span style=color:#f92672>.</span><span style=color:#a6e22e>getMetadata</span><span style=color:#f92672>(</span>TikaInputStream<span style=color:#f92672>.</span><span style=color:#a6e22e>get</span><span style=color:#f92672>(</span><span style=color:#66d9ef>new</span> File<span style=color:#f92672>(</span>path<span style=color:#f92672>).</span><span style=color:#a6e22e>toURI</span><span style=color:#f92672>()));</span>
+    System<span style=color:#f92672>.</span><span style=color:#a6e22e>out</span><span style=color:#f92672>.</span><span style=color:#a6e22e>println</span><span style=color:#f92672>(</span><span style=color:#e6db74>&#34;Content Type&#34;</span> <span style=color:#f92672>+</span> metadata<span style=color:#f92672>.</span><span style=color:#a6e22e>getValues</span><span style=color:#f92672>(</span>Exchange<span style=color:#f92672>.</span><span style=color:#a6e22e>CONTENT_TYPE</span><span style=color:#f92672>));</span>
+    System<span style=color:#f92672>.</span><span style=color:#a6e22e>out</span><span style=color:#f92672>.</span><span style=color:#a6e22e>println</span><span style=color:#f92672>(</span><span style=color:#e6db74>&#34;----------------------------------------------------\n&#34;</span><span style=color:#f92672>);</span>
+  <span style=color:#f92672>}</span>
+<span style=color:#f92672>}</span>
+</code></pre></div><h5 id=building-and-running-2>Building and running</h5><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>./mvnw clean package
+
+java -jar target/qlearn-1.0.0-runner.jar watch -p <span style=color:#e6db74>&#34;./tmp&#34;</span>
+Configuring Watches ... 
+Waiting <span style=color:#66d9ef>for</span> file changes ... Press Ctrl+C to exit.
+----------------------------------------------------
+File /Users/rahgupta19/.k/gh/qlearn/tmp/abc.txt was CREATE.
+Content Type<span style=color:#f92672>[</span>text/plain; charset<span style=color:#f92672>=</span>ISO-8859-1<span style=color:#f92672>]</span>
+----------------------------------------------------
+
+----------------------------------------------------
+File /Users/rahgupta19/.k/gh/qlearn/tmp was CREATE.
+Content Type<span style=color:#f92672>[</span>text/plain; charset<span style=color:#f92672>=</span>ISO-8859-1<span style=color:#f92672>]</span>
+----------------------------------------------------
+</code></pre></div><h5 id=building-and-running-the-native>Building and running the native</h5><div class=highlight><pre style=color:#f8f8f2;background-color:#272822;-moz-tab-size:4;-o-tab-size:4;tab-size:4><code class=language-sh data-lang=sh>./mvnw clean package -Pnative
+
+./target/qlearn-1.0.0-runner watch -p ./tmp
+Configuring Watches ... 
+Waiting <span style=color:#66d9ef>for</span> file changes ... Press Ctrl+C to exit.
+----------------------------------------------------
+File /Users/rahgupta19/.k/gh/qlearn/tmp/abc.txt was CREATE.
+Content Type<span style=color:#f92672>[</span>text/plain; charset<span style=color:#f92672>=</span>ISO-8859-1<span style=color:#f92672>]</span>
+----------------------------------------------------
+
+----------------------------------------------------
+File /Users/rahgupta19/.k/gh/qlearn/tmp/abc.txt was MODIFY.
+Content Type<span style=color:#f92672>[</span>text/plain; charset<span style=color:#f92672>=</span>ISO-8859-1<span style=color:#f92672>]</span>
+----------------------------------------------------
+
+----------------------------------------------------
+File /Users/rahgupta19/.k/gh/qlearn/tmp/1.png was CREATE.
+Content Type<span style=color:#f92672>[</span>image/png<span style=color:#f92672>]</span>
+----------------------------------------------------
+</code></pre></div><p>Trying out with different files and getting same functionality as cli application.</p><p>The code for this step is available at <a href=https://github.com/rchve/qlearn/tree/step-02>https://github.com/rchve/qlearn/tree/step-02</a></p><h5 id=references>References</h5><ul><li><a href=https://quarkus.io/guides/picocli>Quarkus Picocli</a></li><li><a href=https://camel.apache.org/camel-quarkus/latest/>Quarkus Camel</a></li><li><a href=https://quarkus.io/guides/tika>Quarkus Tika</a></li></ul></div><div class=post-info><div class=post-date>2020-06-18</div><div class=post-taxonomies><ul class=post-categories><li><a href=https://rchve.github.io/categories/Development>Development</a></li></ul><ul class=post-tags><li><a href=https://rchve.github.io/tags/java>#Java</a></li><li><a href=https://rchve.github.io/tags/quarkus>#Quarkus</a></li><li><a href=https://rchve.github.io/tags/picocli>#Picocli</a></li><li><a href=https://rchve.github.io/tags/native>#Native</a></li><li><a href=https://rchve.github.io/tags/tika>#Tika</a></li><li><a href=https://rchve.github.io/tags/camel>#Camel</a></li></ul></div></div></article><div class="pagination post-pagination"><div class="left pagination-item disabled"></div><div class="right pagination-item"><a href=/post/quarkus-for-spin-1/>Quarkus for Spin - Part 1</a></div></div><div id=disqus_thread></div><script type=application/javascript>var disqus_config=function(){};(function(){if(["localhost","127.0.0.1"].indexOf(window.location.hostname)!=-1){document.getElementById('disqus_thread').innerHTML='Disqus comments not available by default when the website is previewed locally.';return;}
+var d=document,s=d.createElement('script');s.async=true;s.src='//'+"d-rchve"+'.disqus.com/embed.js';s.setAttribute('data-timestamp',+new Date());(d.head||d.body).appendChild(s);})();</script><noscript>Please enable JavaScript to view the <a href=https://disqus.com/?ref_noscript>comments powered by Disqus.</a></noscript><a href=https://disqus.com class=dsq-brlink>comments powered by <span class=logo-disqus>Disqus</span></a></main><footer><p>© rchve, 2020<br>Powered by <a target=_blank href=https://gohugo.io/>Hugo</a>, theme <a target=_blank href=https://github.com/mitrichius/hugo-theme-anubis>Anubis</a>.</p></footer></div></body></html>
