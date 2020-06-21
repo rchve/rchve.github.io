@@ -1,7 +1,7 @@
 +++
 title = "Quarkus for Spin - Part 1"
 date = "2020-06-10"
-tags = ["Java", "Quarkus", "cli", "Native"]
+tags = ["Java", "Quarkus", "Picocli", "Native"]
 categories = ["Development"] 
 +++
 
